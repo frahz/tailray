@@ -8,7 +8,7 @@ pub fn get_path() -> PathBuf {
 
 // We don't need to elevate privileges if we're using the Tray service
 // as the root user. This shouldn't really happen, but it's possible
-// depending on how Tailran is ran.
+// depending on how Tailray is ran.
 pub fn should_elevate_perms() -> bool {
     let parent_user = username();
 

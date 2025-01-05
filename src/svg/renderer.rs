@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use ksni::Icon;
 use resvg::{
     self,
@@ -7,17 +9,14 @@ use resvg::{
 
 const SVG_DATA: &str = include_str!("assets/tailscale.svg");
 
-pub struct Resvg {
-    options: Options,
+pub struct Resvg<'a> {
+    options: Options<'a>,
     transform: Transform,
-    font_db: fontdb::Database,
 }
 
-impl Resvg {
-    #[allow(clippy::cast_sign_loss)]
-    #[allow(clippy::cast_possible_truncation)]
+impl Resvg<'_> {
     pub fn to_icon(&self, svg_str: &str) -> Icon {
-        let rtree = Tree::from_str(svg_str, &self.options, &self.font_db).unwrap_or_else(|e| {
+        let rtree = Tree::from_str(svg_str, &self.options).unwrap_or_else(|e| {
             panic!("Failed to parse SVG: {e}");
         });
 
@@ -43,10 +42,13 @@ impl Resvg {
     }
 
     pub fn load_icon(enabled: bool) -> Vec<Icon> {
+        let options = Options {
+            fontdb: Arc::new(fontdb::Database::new()),
+            ..Default::default()
+        };
         let renderer = Self {
-            options: Options::default(),
+            options,
             transform: Transform::default(),
-            font_db: fontdb::Database::new(),
         };
 
         if enabled {

@@ -5,9 +5,8 @@ use crate::tailscale::status::{get_current, Status};
 use crate::tailscale::utils::PeerKind;
 
 use ksni::{
-    self,
     menu::{StandardItem, SubMenu},
-    Icon, MenuItem, ToolTip, Tray,
+    Icon, MenuItem, OfflineReason, ToolTip, Tray,
 };
 
 use notify_rust::Notification;
@@ -243,8 +242,11 @@ impl Tray for SysTray {
         log::info!("watcher online.");
     }
 
-    fn watcher_offline(&self) -> bool {
-        log::info!("watcher offline, shutting down the system tray.");
+    fn watcher_offline(&self, reason: OfflineReason) -> bool {
+        log::info!(
+            "watcher offline, shutting down the system tray. reason: {:?}",
+            reason
+        );
         false
     }
 }
