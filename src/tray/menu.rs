@@ -141,7 +141,7 @@ impl Tray for SysTray {
 
             let peer_title = format!("{name} ({ip})");
             let menu = MenuItem::Standard(StandardItem {
-                label: format!("{name}\t({ip})"),
+                label: format!("{ip}\t({name})"),
                 activate: Box::new(move |_: &mut Self| {
                     if let Err(e) = copy_peer_ip(&ip, &peer_title, false) {
                         eprintln!("failed to copy peer ip: {e}");
