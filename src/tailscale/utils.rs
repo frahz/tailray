@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::{
     collections::HashSet,
-    fmt::{Display, Formatter},
+    fmt::{Display, Formatter}, process::{Command, Stdio},
 };
 
 #[derive(Debug)]
@@ -113,4 +114,32 @@ pub fn set_display_name(m: &mut Machine, dns_suffix: &str) {
     } else {
         m.display_name = PeerKind::HostName(dns_name);
     }
+}
+
+// TODO: maybe properly deserialize the JSON?
+pub fn check_tailscale_operator(user: &str) -> bool {
+    if let Ok(output) = Command::new("tailscale")
+        .arg("debug")
+        .arg("prefs")
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap()
+        .wait_with_output()
+    {
+        if output.status.success() {
+            let prefs: Value = match serde_json::from_slice(&output.stdout) {
+                Ok(prefs) => prefs,
+                Err(_) => {
+                    log::info!("Failed to parse JSON");
+                    return false;
+                }
+            };
+            if let Some(operator) = prefs.get("OperatorUser") {
+                if operator.as_str() == Some(user) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }

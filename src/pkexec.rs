@@ -2,6 +2,8 @@ use std::path::PathBuf;
 use which::which;
 use whoami::username;
 
+use crate::tailscale::utils::check_tailscale_operator;
+
 pub fn get_path() -> PathBuf {
     which("pkexec").unwrap_or_else(|_| panic!("pkexec not found in PATH"))
 }
@@ -12,9 +14,14 @@ pub fn get_path() -> PathBuf {
 pub fn should_elevate_perms() -> bool {
     let parent_user = username();
 
+    if check_tailscale_operator(&parent_user) {
+        return false;
+    }
+
     if parent_user.eq("root") {
         return false;
     }
 
     true
 }
+
