@@ -9,6 +9,7 @@ use ksni::{
     Icon, MenuItem, OfflineReason, ToolTip, Tray,
 };
 
+use log::error;
 use notify_rust::Notification;
 use std::{
     error::Error,
@@ -144,7 +145,7 @@ impl Tray for SysTray {
                 label: format!("{ip}\t({name})"),
                 activate: Box::new(move |_: &mut Self| {
                     if let Err(e) = copy_peer_ip(&ip, &peer_title, false) {
-                        eprintln!("failed to copy peer ip: {e}");
+                        error!("failed to copy peer ip: {e}");
                     }
                 }),
                 ..Default::default()
@@ -159,7 +160,7 @@ impl Tray for SysTray {
                 visible: true,
                 activate: Box::new(|this: &mut Self| {
                     if let Err(e) = this.do_service_link("up") {
-                        eprintln!("failed to connect: {e}");
+                        error!("failed to connect: {e}");
                     }
                 }),
                 ..Default::default()
@@ -172,7 +173,7 @@ impl Tray for SysTray {
                 visible: true,
                 activate: Box::new(|this: &mut Self| {
                     if let Err(e) = this.do_service_link("down") {
-                        eprintln!("failed to disconnect: {e}");
+                        error!("failed to disconnect: {e}");
                     }
                 }),
                 ..Default::default()
@@ -187,7 +188,7 @@ impl Tray for SysTray {
                 icon_name: "computer-symbolic".into(),
                 activate: Box::new(move |_| {
                     if let Err(e) = copy_peer_ip(&my_ip, message.as_str(), true) {
-                        eprintln!("failed to copy ip for this device: {e}");
+                        error!("failed to copy ip for this device: {e}");
                     }
                 }),
                 ..Default::default()
@@ -221,7 +222,7 @@ impl Tray for SysTray {
                         "https://login.tailscale.com/admin/machines".to_string()
                     });
                     if let Err(e) = open::that(admin_url.as_str()) {
-                        eprintln!("failed to open admin console: {e}");
+                        error!("failed to open admin console: {e}");
                     }
                 }),
                 ..Default::default()
