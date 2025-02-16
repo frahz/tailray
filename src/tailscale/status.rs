@@ -3,7 +3,6 @@ use crate::tailscale::utils::{Machine, User};
 use crate::tray::menu::Context;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, io, process::Command};
-use which::which;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Status {
@@ -39,11 +38,9 @@ pub fn get() -> Result<Status, Box<dyn std::error::Error>> {
 
 pub fn get_current() -> Result<Context, Box<dyn std::error::Error>> {
     let status = get()?;
-    let pkexec = which("pkexec")?;
 
     Ok(Context {
         ip: status.this_machine.ips[0].clone(),
-        pkexec,
         status,
     })
 }

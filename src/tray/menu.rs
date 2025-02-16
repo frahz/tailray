@@ -9,18 +9,16 @@ use ksni::{
     Icon, MenuItem, OfflineReason, ToolTip, Tray,
 };
 
-use log::error;
+use log::{error, info};
 use notify_rust::Notification;
 use std::{
     error::Error,
-    path::PathBuf,
     process::{Command, Stdio},
 };
 
 #[derive(Debug)]
 pub struct Context {
     pub ip: String,
-    pub pkexec: PathBuf,
     pub status: Status,
 }
 
@@ -43,7 +41,7 @@ impl SysTray {
         let pkexec_path = get_path();
         let elevate = should_elevate_perms();
         let command = if elevate {
-            log::info!("Elevating permissions for pkexec.");
+            info!("Elevating permissions for pkexec.");
             Command::new(pkexec_path)
                 .arg("tailscale")
                 .arg(verb)
@@ -63,7 +61,7 @@ impl SysTray {
 
         let output = command.wait_with_output()?;
 
-        log::info!(
+        info!(
             "Link {}: [{}]{}",
             &verb,
             output.status,
@@ -240,11 +238,11 @@ impl Tray for SysTray {
     }
 
     fn watcher_online(&self) {
-        log::info!("watcher online.");
+        info!("watcher online.");
     }
 
     fn watcher_offline(&self, reason: OfflineReason) -> bool {
-        log::info!(
+        info!(
             "watcher offline, shutting down the system tray. reason: {:?}",
             reason
         );

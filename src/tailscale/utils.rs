@@ -1,8 +1,10 @@
+use log::error;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
     collections::HashSet,
-    fmt::{Display, Formatter}, process::{Command, Stdio},
+    fmt::{Display, Formatter},
+    process::{Command, Stdio},
 };
 
 #[derive(Debug)]
@@ -127,17 +129,12 @@ pub fn check_tailscale_operator(user: &str) -> bool {
         .wait_with_output()
     {
         if output.status.success() {
-            let prefs: Value = match serde_json::from_slice(&output.stdout) {
-                Ok(prefs) => prefs,
-                Err(_) => {
-                    log::info!("Failed to parse JSON");
-                    return false;
-                }
+            let Ok(prefs) = serde_json::from_slice::<Value>(&output.stdout) else {
+                error!("Failed to parse JSON");
+                return false;
             };
             if let Some(operator) = prefs.get("OperatorUser") {
-                if operator.as_str() == Some(user) {
-                    return true;
-                }
+                return operator.as_str() == Some(user);
             }
         }
     }

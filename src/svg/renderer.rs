@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use ksni::Icon;
+use log::debug;
 use resvg::{
     self,
     tiny_skia::{Pixmap, Transform},
@@ -52,10 +53,10 @@ impl Resvg<'_> {
         };
 
         if enabled {
-            log::debug!("icon: Tailscale is enabled");
+            debug!("icon: Tailscale is enabled");
             vec![renderer.to_icon(SVG_DATA)]
         } else {
-            log::debug!("icon: Tailscale is not enabled");
+            debug!("icon: Tailscale is not enabled");
             vec![renderer.to_icon(&SVG_DATA.replace("1.0", "0.4"))]
         }
     }
