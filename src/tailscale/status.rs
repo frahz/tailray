@@ -1,9 +1,25 @@
 use crate::tailscale::types::{BackendState, ExitNodeStatus, Machine, TailnetStatus, User};
 use crate::tray::menu::Context;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, io, process::Command};
+use std::{collections::HashMap, process::Command};
+use thiserror::Error;
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+type Result<T> = std::result::Result<T, StatusError>;
+
+#[derive(Error, Debug)]
+pub enum StatusError {
+    #[error("tailscale command failed")]
+    Command(#[from] std::io::Error),
+
+    #[error("failed to decode tailscale command response")]
+    CommandDecode(#[from] std::string::FromUtf8Error),
+
+    #[error("failed to fetch tailscale status")]
+    FetchFailed,
+
+    #[error("failed to deserialize tailscale status")]
+    Deserialize(#[from] serde_json::Error),
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Status {
@@ -32,7 +48,7 @@ impl Status {
         let status = Self::get()?;
 
         Ok(Context {
-            ip: status.this_machine.ips[0].clone(),
+            ip: status.this_machine.ips[0].to_string(),
             status,
         })
     }
@@ -40,7 +56,7 @@ impl Status {
     fn get() -> Result<Status> {
         let status_json = Self::get_json()?;
         let mut status: Status = serde_json::from_str(&status_json)?;
-        let dnssuffix = &status.magic_dnssuffix;
+        let dnssuffix = &status.current_tailnet.magic_dnssuffix;
 
         status.this_machine.set_display_name(dnssuffix);
         status
@@ -61,10 +77,7 @@ impl Status {
             let stdout = String::from_utf8(output.stdout)?;
             Ok(stdout)
         } else {
-            Err(Box::new(io::Error::new(
-                io::ErrorKind::Other,
-                "Failed to fetch tailscale status.",
-            )))
+            Err(StatusError::FetchFailed)
         }
     }
 

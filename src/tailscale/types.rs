@@ -1,6 +1,7 @@
 use crate::tailscale::utils::{sanitize_hostname, trim_suffix};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
+use std::net::IpAddr;
 
 #[derive(Debug)]
 pub enum PeerKind {
@@ -16,7 +17,7 @@ impl Default for PeerKind {
 
 impl Display for PeerKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match &self {
+        match self {
             Self::DNSName(d) => write!(f, "{d}"),
             Self::HostName(h) => write!(f, "{h}"),
         }
@@ -33,6 +34,13 @@ pub enum BackendState {
     Running,
 }
 
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct StableNodeId(String);
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UserId(u64);
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TailnetStatus {
     #[serde(rename(deserialize = "Name"))]
@@ -47,22 +55,31 @@ pub struct TailnetStatus {
 pub struct Machine {
     #[serde(skip)]
     pub display_name: PeerKind,
+    #[serde(rename(deserialize = "ID"))]
+    pub id: StableNodeId,
     #[serde(rename(deserialize = "DNSName"))]
     pub dns_name: String,
     #[serde(rename(deserialize = "HostName"))]
-    pub hostname: String,
+    pub host_name: String,
     #[serde(rename(deserialize = "TailscaleIPs"))]
-    pub ips: Vec<String>,
+    pub ips: Vec<IpAddr>,
+    #[serde(rename(deserialize = "Online"))]
+    pub online: bool,
+    #[serde(rename(deserialize = "ExitNode"))]
+    pub exit_node: bool,
+    #[serde(rename(deserialize = "ExitNodeOption"))]
+    pub exit_node_option: bool,
 }
 
 impl Machine {
     pub fn set_display_name(&mut self, dns_suffix: &str) {
         let dns_name = trim_suffix(&self.dns_name, dns_suffix);
 
-        if dns_name.is_empty() {
-            self.display_name = PeerKind::DNSName(sanitize_hostname(&self.hostname));
+        // TODO: look into why host_name is PeerKind::DNSName
+        self.display_name = if dns_name.is_empty() {
+            PeerKind::DNSName(sanitize_hostname(&self.host_name))
         } else {
-            self.display_name = PeerKind::HostName(dns_name);
+            PeerKind::HostName(dns_name)
         }
     }
 }
@@ -70,7 +87,7 @@ impl Machine {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct User {
     #[serde(rename(deserialize = "ID"))]
-    id: u64,
+    id: UserId,
     #[serde(rename(deserialize = "LoginName"))]
     login_name: String,
     #[serde(rename(deserialize = "DisplayName"))]
@@ -84,7 +101,7 @@ pub struct User {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ExitNodeStatus {
     #[serde(rename(deserialize = "ID"))]
-    pub id: String,
+    pub id: StableNodeId,
     #[serde(rename(deserialize = "Online"))]
     pub online: bool,
     #[serde(rename(deserialize = "TailscaleIPs"))]

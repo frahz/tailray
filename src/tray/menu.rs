@@ -131,7 +131,7 @@ impl Tray for SysTray {
         let mut my_sub = Vec::new();
         let mut serv_sub = Vec::new();
         for peer in self.ctx.status.peers.values() {
-            let ip = peer.ips[0].clone();
+            let ip = peer.ips[0].to_string();
             let name = &peer.display_name;
             let sub = match name {
                 PeerKind::DNSName(_) => &mut serv_sub,

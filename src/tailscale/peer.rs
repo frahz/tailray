@@ -1,6 +1,18 @@
 use crate::clipboard::{copy, get};
 use log::{error, info};
 use notify_rust::Notification;
+use thiserror::Error;
+
+type Result<T> = std::result::Result<T, CopyPeerIpError>;
+
+#[derive(Error, Debug)]
+pub enum CopyPeerIpError {
+    #[error("clipboard operation failed")]
+    Clipboard(#[from] arboard::Error),
+
+    #[error("notification failed")]
+    Notification(#[from] notify_rust::error::Error),
+}
 
 pub fn check_peer_ip(peer_ip: &str) {
     if peer_ip.is_empty() {
@@ -10,11 +22,7 @@ pub fn check_peer_ip(peer_ip: &str) {
     }
 }
 
-pub fn copy_peer_ip(
-    peer_ip: &str,
-    notif_body: &str,
-    host: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub fn copy_peer_ip(peer_ip: &str, notif_body: &str, host: bool) -> Result<()> {
     check_peer_ip(peer_ip);
 
     copy(peer_ip)?;
