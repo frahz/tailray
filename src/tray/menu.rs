@@ -1,26 +1,24 @@
 use crate::pkexec::{get_path, should_elevate_perms};
 use crate::svg::renderer::Resvg;
 use crate::tailscale::peer::copy_peer_ip;
-use crate::tailscale::status::{get_current, Status};
-use crate::tailscale::utils::PeerKind;
+use crate::tailscale::status::Status;
+use crate::tailscale::types::PeerKind;
 
 use ksni::{
     menu::{StandardItem, SubMenu},
     Icon, MenuItem, OfflineReason, ToolTip, Tray,
 };
 
-use log::error;
+use log::{error, info};
 use notify_rust::Notification;
 use std::{
     error::Error,
-    path::PathBuf,
     process::{Command, Stdio},
 };
 
 #[derive(Debug)]
 pub struct Context {
     pub ip: String,
-    pub pkexec: PathBuf,
     pub status: Status,
 }
 
@@ -30,12 +28,12 @@ pub struct SysTray {
 }
 
 impl SysTray {
-    const fn enabled(&self) -> bool {
-        self.ctx.status.tailscale_up
+    fn enabled(&self) -> bool {
+        self.ctx.status.is_up()
     }
 
     fn update_status(&mut self) -> Result<(), Box<dyn Error>> {
-        self.ctx = get_current()?;
+        self.ctx = Status::get_current()?;
         Ok(())
     }
 
@@ -43,7 +41,7 @@ impl SysTray {
         let pkexec_path = get_path();
         let elevate = should_elevate_perms();
         let command = if elevate {
-            log::info!("Elevating permissions for pkexec.");
+            info!("Elevating permissions for pkexec.");
             Command::new(pkexec_path)
                 .arg("tailscale")
                 .arg(verb)
@@ -63,7 +61,7 @@ impl SysTray {
 
         let output = command.wait_with_output()?;
 
-        log::info!(
+        info!(
             "Link {}: [{}]{}",
             &verb,
             output.status,
@@ -133,7 +131,7 @@ impl Tray for SysTray {
         let mut my_sub = Vec::new();
         let mut serv_sub = Vec::new();
         for peer in self.ctx.status.peers.values() {
-            let ip = peer.ips[0].clone();
+            let ip = peer.ips[0].to_string();
             let name = &peer.display_name;
             let sub = match name {
                 PeerKind::DNSName(_) => &mut serv_sub,
@@ -240,11 +238,11 @@ impl Tray for SysTray {
     }
 
     fn watcher_online(&self) {
-        log::info!("watcher online.");
+        info!("watcher online.");
     }
 
     fn watcher_offline(&self, reason: OfflineReason) -> bool {
-        log::info!(
+        info!(
             "watcher offline, shutting down the system tray. reason: {:?}",
             reason
         );

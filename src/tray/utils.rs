@@ -1,18 +1,18 @@
-use crate::tailscale;
+use crate::tailscale::status::Status;
 use crate::tray::menu::SysTray;
-use ksni::blocking::TrayMethods;
+use ksni::blocking::{Handle, TrayMethods};
 use std::error::Error;
 
 type TrayServiceError = Box<dyn Error>;
 
-pub fn start_tray_service() -> Result<(), TrayServiceError> {
-    let status = tailscale::status::get_current()
-        .map_err(|e| format!("Failed to update Tailscale status: {e}"))?;
+pub fn start_tray_service() -> Result<Handle<SysTray>, TrayServiceError> {
+    let status =
+        Status::get_current().map_err(|e| format!("Failed to update Tailscale status: {e}"))?;
 
     let tray = SysTray { ctx: status };
-    let _handle = tray
+    let handle = tray
         .spawn()
         .map_err(|e| format!("Failed to spawn Tray implementation: {e}"))?;
 
-    Ok(())
+    Ok(handle)
 }

@@ -24,4 +24,3 @@ pub fn should_elevate_perms() -> bool {
 
     true
 }
-

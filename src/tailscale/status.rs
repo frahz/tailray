@@ -1,66 +1,88 @@
-use crate::tailscale::utils;
-use crate::tailscale::utils::{Machine, User};
+use crate::tailscale::types::{BackendState, ExitNodeStatus, Machine, TailnetStatus, User};
 use crate::tray::menu::Context;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, io, process::Command};
-use which::which;
+use std::{collections::HashMap, process::Command};
+use thiserror::Error;
+
+type Result<T> = std::result::Result<T, StatusError>;
+
+#[derive(Error, Debug)]
+pub enum StatusError {
+    #[error("tailscale command failed")]
+    Command(#[from] std::io::Error),
+
+    #[error("failed to decode tailscale command response")]
+    CommandDecode(#[from] std::string::FromUtf8Error),
+
+    #[error("failed to fetch tailscale status")]
+    FetchFailed,
+
+    #[error("failed to deserialize tailscale status")]
+    Deserialize(#[from] serde_json::Error),
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Status {
-    // TODO: mutex
-    #[serde(skip)]
-    pub tailscale_up: bool,
+    #[serde(rename(deserialize = "Version"))]
+    version: String,
+    #[serde(rename(deserialize = "TUN"))]
+    tun: bool,
     #[serde(rename(deserialize = "BackendState"))]
-    backend_state: String,
+    backend_state: BackendState,
     #[serde(rename(deserialize = "Self"))]
     pub this_machine: Machine,
+    #[serde(rename(deserialize = "ExitNodeStatus"))]
+    pub exit_node_status: Option<ExitNodeStatus>,
     #[serde(rename(deserialize = "MagicDNSSuffix"))]
     magic_dnssuffix: String,
+    #[serde(rename(deserialize = "CurrentTailnet"))]
+    current_tailnet: TailnetStatus,
     #[serde(rename(deserialize = "Peer"))]
     pub peers: HashMap<String, Machine>,
     #[serde(rename(deserialize = "User"))]
     user: HashMap<String, User>,
 }
 
-pub fn get() -> Result<Status, Box<dyn std::error::Error>> {
-    let status_json = get_json()?;
-    let mut status: Status = serde_json::from_str(&status_json)?;
-    let dnssuffix = &status.magic_dnssuffix;
-    status.tailscale_up = matches!(status.backend_state.as_str(), "Running");
+impl Status {
+    pub fn get_current() -> Result<Context> {
+        let status = Self::get()?;
 
-    utils::set_display_name(&mut status.this_machine, dnssuffix);
-    status
-        .peers
-        .values_mut()
-        .for_each(|m| utils::set_display_name(m, dnssuffix));
+        Ok(Context {
+            ip: status.this_machine.ips[0].to_string(),
+            status,
+        })
+    }
 
-    Ok(status)
-}
+    fn get() -> Result<Status> {
+        let status_json = Self::get_json()?;
+        let mut status: Status = serde_json::from_str(&status_json)?;
+        let dnssuffix = &status.current_tailnet.magic_dnssuffix;
 
-pub fn get_current() -> Result<Context, Box<dyn std::error::Error>> {
-    let status = get()?;
-    let pkexec = which("pkexec")?;
+        status.this_machine.set_display_name(dnssuffix);
+        status
+            .peers
+            .values_mut()
+            .for_each(|m| m.set_display_name(dnssuffix));
 
-    Ok(Context {
-        ip: status.this_machine.ips[0].clone(),
-        pkexec,
-        status,
-    })
-}
+        Ok(status)
+    }
 
-pub fn get_json() -> Result<String, Box<dyn std::error::Error>> {
-    let output = Command::new("tailscale")
-        .arg("status")
-        .arg("--json")
-        .output()?;
+    fn get_json() -> Result<String> {
+        let output = Command::new("tailscale")
+            .arg("status")
+            .arg("--json")
+            .output()?;
 
-    if output.status.success() {
-        let stdout = String::from_utf8(output.stdout)?;
-        Ok(stdout)
-    } else {
-        Err(Box::new(io::Error::new(
-            io::ErrorKind::Other,
-            "Failed to fetch tailscale status.",
-        )))
+        if output.status.success() {
+            let stdout = String::from_utf8(output.stdout)?;
+            Ok(stdout)
+        } else {
+            Err(StatusError::FetchFailed)
+        }
+    }
+
+    // TODO: mutex
+    pub fn is_up(&self) -> bool {
+        self.backend_state == BackendState::Running
     }
 }
