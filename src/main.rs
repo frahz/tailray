@@ -4,11 +4,11 @@ mod svg;
 mod tailscale;
 mod tray;
 
-use log::{error, info};
+use log::{error, info, trace};
 
+use crate::tailscale::status::Status;
 use crate::tray::utils::start_tray_service;
 use std::process::exit;
-use std::thread::park;
 
 fn main() {
     // initialize logger
@@ -17,14 +17,27 @@ fn main() {
         .init();
 
     // start tray service
-    match start_tray_service() {
-        Ok(()) => info!("Tray service started successfully."),
+    let handle = match start_tray_service() {
+        Ok(handle) => handle,
         Err(e) => {
             error!("Failed to start the tray service: {e}");
             exit(1);
         }
-    }
+    };
+    info!("Tray service started successfully.");
 
     // keep the main thread alive
-    park();
+    let mut state = false;
+    loop {
+        let ctx = Status::get_current().expect("success");
+        let update_state = ctx.status.is_up();
+        trace!("Tailscale Status = [{}]", update_state);
+        if update_state != state {
+            handle.update(|tray| {
+                tray.ctx = ctx;
+            });
+        }
+        state = update_state;
+        std::thread::sleep(std::time::Duration::from_secs(5));
+    }
 }

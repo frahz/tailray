@@ -1,58 +1,9 @@
 use log::error;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
     collections::HashSet,
-    fmt::{Display, Formatter},
     process::{Command, Stdio},
 };
-
-#[derive(Debug)]
-pub enum PeerKind {
-    DNSName(String),
-    HostName(String),
-}
-
-impl Default for PeerKind {
-    fn default() -> Self {
-        Self::HostName("default".to_owned())
-    }
-}
-
-impl Display for PeerKind {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match &self {
-            Self::DNSName(d) => write!(f, "{d}"),
-            Self::HostName(h) => write!(f, "{h}"),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Machine {
-    #[serde(skip)]
-    pub display_name: PeerKind,
-    #[serde(rename(deserialize = "DNSName"))]
-    pub dns_name: String,
-    #[serde(rename(deserialize = "HostName"))]
-    pub hostname: String,
-    #[serde(rename(deserialize = "TailscaleIPs"))]
-    pub ips: Vec<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct User {
-    #[serde(rename(deserialize = "ID"))]
-    id: u64,
-    #[serde(rename(deserialize = "LoginName"))]
-    login_name: String,
-    #[serde(rename(deserialize = "DisplayName"))]
-    display_name: String,
-    #[serde(rename(deserialize = "ProfilePicURL"))]
-    profile_pic_url: String,
-    #[serde(rename(deserialize = "Roles"))]
-    roles: Vec<String>,
-}
 
 pub fn has_suffix(name: &str, suffix: &str) -> bool {
     let name = name.trim_end_matches('.');
@@ -106,16 +57,6 @@ pub fn sanitize_hostname(hostname: &str) -> String {
 
     sanitized.truncate(MAX_LABEL_LENGTH);
     sanitized
-}
-
-pub fn set_display_name(m: &mut Machine, dns_suffix: &str) {
-    let dns_name = trim_suffix(&m.dns_name, dns_suffix);
-
-    if dns_name.is_empty() {
-        m.display_name = PeerKind::DNSName(sanitize_hostname(&m.hostname));
-    } else {
-        m.display_name = PeerKind::HostName(dns_name);
-    }
 }
 
 // TODO: maybe properly deserialize the JSON?
