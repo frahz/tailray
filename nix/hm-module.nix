@@ -30,7 +30,7 @@ in {
       Unit = {
         Description = "Tailscale tray item";
         Requires = "tray.target";
-        After = ["graphical-session-pre.target" "tray.target"];
+        After = ["tray.target"];
         PartOf = ["graphical-session.target"];
       };
 
