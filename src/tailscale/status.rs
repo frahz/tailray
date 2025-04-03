@@ -17,7 +17,7 @@ pub enum StatusError {
     #[error("failed to fetch tailscale status")]
     FetchFailed,
 
-    #[error("failed to deserialize tailscale status")]
+    #[error(transparent)]
     Deserialize(#[from] serde_json::Error),
 }
 

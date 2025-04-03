@@ -95,7 +95,7 @@ pub struct User {
     #[serde(rename(deserialize = "ProfilePicURL"))]
     profile_pic_url: String,
     #[serde(rename(deserialize = "Roles"))]
-    roles: Vec<String>,
+    roles: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
